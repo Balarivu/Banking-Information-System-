@@ -1,0 +1,179 @@
+
+import java.io.*;
+import java.util.*;
+
+public class BankSystem {
+    private static Map<Integer, User> users = new HashMap<>();
+    private static Scanner scanner = new Scanner(System.in);
+    private static final String DATA_FILE = "users.txt";
+
+    public static void main(String[] args) {
+        loadUsersFromFile();
+        System.out.println("Welcome to the Banking Information System Prototype!");
+
+        while (true) {
+            System.out.println("\nMain Menu:");
+            System.out.println("1. Register New User");
+            System.out.println("2. Login");
+            System.out.println("3. Exit");
+            System.out.print("Choose an option: ");
+            int choice = scanner.nextInt();
+            scanner.nextLine(); // Consume newline
+
+            switch (choice) {
+                case 1:
+                    registerUser();
+                    break;
+                case 2:
+                    login();
+                    break;
+                case 3:
+                    saveUsersToFile();
+                    System.out.println("Thank you for using the system. Goodbye!");
+                    return;
+                default:
+                    System.out.println("Invalid option. Please try again.");
+            }
+        }
+    }
+
+    private static void registerUser() {
+        System.out.println("\n--- User Registration ---");
+        System.out.print("Enter Name: ");
+        String name = scanner.nextLine();
+        System.out.print("Enter Address: ");
+        String address = scanner.nextLine();
+        System.out.print("Enter Contact: ");
+        String contact = scanner.nextLine();
+        System.out.print("Enter Password: ");
+        String password = scanner.nextLine();
+        System.out.print("Enter Initial Deposit Amount: ");
+        double initialDeposit = scanner.nextDouble();
+        scanner.nextLine(); // Consume newline
+
+        try {
+            Account account = new Account(initialDeposit);
+            User user = new User(name, address, contact, password, account);
+            users.put(account.getAccountNumber(), user);
+            System.out.println("Registration successful! Your Account Number is: " + account.getAccountNumber());
+        } catch (Exception e) {
+            System.out.println("Error during registration: " + e.getMessage());
+        }
+    }
+
+    private static void login() {
+        System.out.println("\n--- Login ---");
+        System.out.print("Enter Account Number: ");
+        int accountNumber = scanner.nextInt();
+        scanner.nextLine(); // Consume newline
+        System.out.print("Enter Password: ");
+        String password = scanner.nextLine();
+
+        User user = users.get(accountNumber);
+        if (user != null && user.getPassword().equals(password)) {
+            System.out.println("Login successful! Welcome, " + user.getName());
+            userMenu(user);
+        } else {
+            System.out.println("Invalid account number or password.");
+        }
+    }
+
+    private static void userMenu(User user) {
+        Account account = user.getAccount();
+        while (true) {
+            System.out.println("\n--- User Menu ---");
+            System.out.println("1. View Account Details");
+            System.out.println("2. Update Account Information");
+            System.out.println("3. Deposit");
+            System.out.println("4. Withdraw");
+            System.out.println("5. Transfer Funds");
+            System.out.println("6. View Account Statement");
+            System.out.println("7. Logout");
+            System.out.print("Choose an option: ");
+            int choice = scanner.nextInt();
+            scanner.nextLine(); // Consume newline
+
+            try {
+                switch (choice) {
+                    case 1:
+                        System.out.println("\nAccount Details:");
+                        System.out.println(user);
+                        System.out.println("Balance: " + account.getBalance());
+                        break;
+                    case 2:
+                        updateAccountInfo(user);
+                        break;
+                    case 3:
+                        System.out.print("Enter deposit amount: ");
+                        double depositAmount = scanner.nextDouble();
+                        account.deposit(depositAmount);
+                        System.out.println("Deposit successful! New Balance: " + account.getBalance());
+                        break;
+                    case 4:
+                        System.out.print("Enter withdrawal amount: ");
+                        double withdrawAmount = scanner.nextDouble();
+                        account.withdraw(withdrawAmount);
+                        System.out.println("Withdrawal successful! New Balance: " + account.getBalance());
+                        break;
+                    case 5:
+                        System.out.print("Enter recipient account number: ");
+                        int recipientAccountNumber = scanner.nextInt();
+                        System.out.print("Enter transfer amount: ");
+                        double transferAmount = scanner.nextDouble();
+                        Account recipient = users.get(recipientAccountNumber).getAccount();
+                        if (recipient == null) throw new IllegalArgumentException("Recipient account not found.");
+                        account.transfer(recipient, transferAmount);
+                        System.out.println("Transfer successful! Your New Balance: " + account.getBalance() + ", Recipient's New Balance: " + recipient.getBalance());
+                        break;
+                    case 6:
+                        System.out.println("\n--- Account Statement ---");
+                        for (Transaction t : account.getTransactions()) {
+                            System.out.println(t);
+                        }
+                        break;
+                    case 7:
+                        System.out.println("Logged out.");
+                        return;
+                    default:
+                        System.out.println("Invalid option.");
+                }
+            } catch (Exception e) {
+                System.out.println("Error: " + e.getMessage());
+            }
+        }
+    }
+
+    private static void updateAccountInfo(User user) {
+        System.out.println("\n--- Update Account Information ---");
+        System.out.print("Enter new Name (current: " + user.getName() + "): ");
+        String name = scanner.nextLine();
+        if (!name.isEmpty()) user.setName(name);
+        System.out.print("Enter new Address (current: " + user.getAddress() + "): ");
+        String address = scanner.nextLine();
+        if (!address.isEmpty()) user.setAddress(address);
+        System.out.print("Enter new Contact (current: " + user.getContact() + "): ");
+        String contact = scanner.nextLine();
+        if (!contact.isEmpty()) user.setContact(contact);
+        System.out.println("Account information updated successfully!");
+    }
+
+    private static void loadUsersFromFile() {
+        try (ObjectInputStream ois = new ObjectInputStream(new FileInputStream(DATA_FILE))) {
+            users = (Map<Integer, User>) ois.readObject();
+            System.out.println("User data loaded from file.");
+        } catch (FileNotFoundException e) {
+            System.out.println("No existing user data found. Starting fresh.");
+        } catch (Exception e) {
+            System.out.println("Error loading user data: " + e.getMessage());
+        }
+    }
+
+    private static void saveUsersToFile() {
+        try (ObjectOutputStream oos = new ObjectOutputStream(new FileOutputStream(DATA_FILE))) {
+            oos.writeObject(users);
+            System.out.println("User data saved to file.");
+        } catch (Exception e) {
+            System.out.println("Error saving user data: " + e.getMessage());
+        }
+    }
+}
